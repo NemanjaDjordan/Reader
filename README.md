@@ -140,3 +140,11 @@ Slint attribution requirements, Qt LGPL terms, Material Icons attribution, and
 the UnRAR restriction must still be followed. See
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
+Download the latest version for your operating system:
+https://github.com/NemanjaDjordan/Reader/releases/latest
+
+Available packages:
+
+- Android ARM64 APK
+- Linux x86-64
+- Windows x86-64
