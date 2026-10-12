@@ -1,0 +1,1222 @@
+import { Button, HorizontalBox, LineEdit, ListView, VerticalBox } from "std-widgets.slint";
+
+export struct LibraryEntry {
+    entry-id: string,
+    title: string,
+    subtitle: string,
+    badge: string,
+    accent: color,
+    entry-kind: int,
+    favorite: bool,
+    selected: bool,
+    cover: image,
+    has-cover: bool,
+}
+
+export struct LibraryRow {
+    first: LibraryEntry,
+    second: LibraryEntry,
+    has-second: bool,
+}
+
+export struct ReaderPage {
+    heading: string,
+    body: string,
+    locator: string,
+    progress: float,
+}
+
+export struct ReaderBlock {
+    text: string,
+    picture: image,
+    is-image: bool,
+    aspect-ratio: float,
+    pixel-width: float,
+    pixel-height: float,
+}
+
+export struct ReaderToolItem {
+    label: string,
+    detail: string,
+    page-index: int,
+}
+
+component ReaderToolRow inherits Rectangle {
+    in property <ReaderToolItem> item;
+    callback activated(int);
+    height: 52px;
+    background: touch.has-hover ? #303747 : #202634;
+    border-radius: 8px;
+
+    VerticalBox {
+        padding-left: 10px;
+        padding-right: 10px;
+        padding-top: 6px;
+        padding-bottom: 6px;
+        spacing: 2px;
+        Text {
+            text: root.item.label;
+            color: #f0f2f8;
+            font-size: 14px;
+            font-weight: 600;
+            overflow: elide;
+        }
+        Text {
+            text: root.item.detail;
+            color: #969fb3;
+            font-size: 11px;
+            overflow: elide;
+        }
+    }
+    touch := TouchArea { clicked => { root.activated(root.item.page-index); } }
+}
+
+component ReaderContentBlock inherits Rectangle {
+    in property <ReaderBlock> block;
+    in property <float> reader-font-size: 18;
+    in property <float> reader-line-spacing: 1.2;
+    in property <color> reader-text-color: #e4e7ef;
+    height: block.is-image ? min(520px, self.width / max(block.aspect-ratio, 0.1)) : block-text.preferred-height + 14px;
+    background: transparent;
+
+    if block.is-image: Image {
+        source: block.picture;
+        image-fit: contain;
+    }
+
+    block-text := Text {
+        visible: !block.is-image;
+        width: parent.width;
+        text: block.text;
+        color: root.reader-text-color;
+        font-size: root.reader-font-size * 1px;
+        line-height-factor: root.reader-line-spacing;
+        wrap: word-wrap;
+    }
+}
+
+component NavButton inherits Rectangle {
+    in property <string> label;
+    in property <image> icon;
+    in property <bool> compact: false;
+    in property <bool> selected;
+    callback activated();
+
+    height: 42px;
+    border-radius: 10px;
+    background: selected ? #536dfe : touch.has-hover ? #2c3242 : transparent;
+    border-width: 1px;
+    border-color: self.background;
+
+    if root.icon.width > 0: Image {
+        x: root.compact ? (parent.width - 24px) / 2 : 10px;
+        y: (parent.height - 24px) / 2;
+        width: 24px;
+        height: 24px;
+        source: root.icon;
+        image-fit: contain;
+    }
+
+    Text {
+        text: root.compact ? "" : root.label;
+        visible: !root.compact;
+        color: root.selected ? #ffffff : #bbc2d4;
+        font-size: 14px;
+        font-weight: root.selected ? 700 : 500;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+
+    touch := TouchArea {
+        clicked => { root.activated(); }
+    }
+}
+
+component EntryCard inherits Rectangle {
+    in property <LibraryEntry> entry;
+    in property <bool> show-remove;
+    in property <bool> selection-mode;
+    in property <bool> compact: false;
+    callback activated();
+    callback favorite-toggled(string);
+    callback reading-removed(string);
+
+    height: compact ? 88px : 104px;
+    background: entry.selected ? #252f50 : (touch.has-hover ? #242a38 : #1c212d);
+    border-color: entry.selected ? #6578ff : #303747;
+    border-width: entry.selected ? 2px : 1px;
+    border-radius: 14px;
+
+    touch := TouchArea {
+        clicked => { root.activated(); }
+    }
+
+    HorizontalBox {
+        padding: compact ? 8px : 12px;
+        spacing: compact ? 7px : 14px;
+
+        Rectangle {
+            preferred-width: root.compact ? 48px : 66px;
+            min-width: root.compact ? 48px : 66px;
+            max-width: root.compact ? 48px : 66px;
+            horizontal-stretch: 0;
+            border-radius: 9px;
+            background: root.entry.accent;
+
+            if root.entry.has-cover: Image {
+                source: root.entry.cover;
+                image-fit: cover;
+            }
+
+            if !root.entry.has-cover && root.entry.entry-kind == 0: Image {
+                x: (parent.width - (root.compact ? 30px : 38px)) / 2;
+                y: (parent.height - (root.compact ? 30px : 38px)) / 2;
+                width: root.compact ? 30px : 38px;
+                height: root.compact ? 30px : 38px;
+                source: @image-url("../assets/icons/folder.svg");
+                image-fit: contain;
+            }
+
+            Text {
+                visible: !root.entry.has-cover && root.entry.entry-kind != 0;
+                width: parent.width - 8px;
+                x: 4px;
+                text: root.entry.entry-kind == 1 ? root.entry.title : "COMIC";
+                color: #ffffff;
+                font-size: root.compact ? 8px : 10px;
+                font-weight: 700;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+                wrap: word-wrap;
+                overflow: elide;
+            }
+        }
+
+        VerticalBox {
+            horizontal-stretch: 1;
+            alignment: center;
+                spacing: root.compact ? 3px : 5px;
+
+            Text {
+                text: root.entry.title;
+                color: #f4f6fb;
+                font-size: root.compact ? 15px : 17px;
+                font-weight: 700;
+                overflow: elide;
+            }
+
+            Text {
+                text: root.entry.subtitle;
+                color: #9ea7bb;
+                font-size: root.compact ? 12px : 13px;
+                overflow: elide;
+            }
+
+            Text {
+                text: root.entry.badge;
+                color: #7f8cff;
+                font-size: root.compact ? 11px : 12px;
+                font-weight: 600;
+            }
+        }
+
+        if root.entry.entry-kind != 0 && !root.selection-mode: Button {
+            preferred-width: root.compact ? 42px : 44px;
+            min-width: root.compact ? 42px : 44px;
+            max-width: root.compact ? 42px : 44px;
+            horizontal-stretch: 0;
+            text: root.entry.favorite ? "★" : "☆";
+            clicked => { root.favorite-toggled(root.entry.entry-id); }
+        }
+
+        if root.show-remove && root.entry.entry-kind != 0 && !root.selection-mode: Button {
+            preferred-width: root.compact ? 42px : 72px;
+            min-width: root.compact ? 42px : 72px;
+            max-width: root.compact ? 42px : 72px;
+            horizontal-stretch: 0;
+            text: root.compact ? "" : "Remove";
+            icon: @image-url("../assets/icons/close.svg");
+            clicked => { root.reading-removed(root.entry.entry-id); }
+        }
+
+        Text {
+            preferred-width: root.compact ? 18px : 28px;
+            min-width: root.compact ? 18px : 28px;
+            max-width: root.compact ? 18px : 28px;
+            horizontal-stretch: 0;
+            text: root.entry.selected ? "✓" : "›";
+            color: #8f99b0;
+            font-size: 26px;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+    }
+
+}
+
+component GridEntryCard inherits Rectangle {
+    in property <LibraryEntry> entry;
+    in property <bool> show-remove;
+    in property <bool> selection-mode;
+    callback activated();
+    callback favorite-toggled(string);
+    callback reading-removed(string);
+
+    height: 252px;
+    clip: true;
+    background: entry.selected ? #252f50 : (touch.has-hover ? #242a38 : #1c212d);
+    border-color: entry.selected ? #6578ff : #303747;
+    border-width: entry.selected ? 2px : 1px;
+    border-radius: 14px;
+
+    touch := TouchArea { clicked => { root.activated(); } }
+
+    cover-area := Rectangle {
+        x: 8px; y: 8px; width: parent.width - 16px; height: 154px;
+        clip: true;
+        border-radius: 9px;
+        background: root.entry.accent;
+        if root.entry.has-cover: Image {
+            x: 0px; y: 0px; width: parent.width; height: parent.height;
+            source: root.entry.cover;
+            image-fit: contain;
+        }
+        if !root.entry.has-cover && root.entry.entry-kind == 0: Image {
+            x: (parent.width - 58px) / 2; y: (parent.height - 58px) / 2;
+            width: 58px; height: 58px;
+            source: @image-url("../assets/icons/folder.svg");
+            image-fit: contain;
+        }
+        if !root.entry.has-cover && root.entry.entry-kind != 0: Text {
+            x: 8px; y: 8px; width: parent.width - 16px; height: parent.height - 16px;
+            text: root.entry.entry-kind == 1 ? root.entry.title : "COMIC";
+            color: #ffffff; font-size: 12px; font-weight: 700;
+            horizontal-alignment: center; vertical-alignment: center;
+            wrap: word-wrap; overflow: elide;
+        }
+        if root.entry.selected: Text {
+            x: parent.width - 34px; y: 6px; width: 28px; height: 28px;
+            text: "✓"; color: #ffffff; font-size: 22px;
+            horizontal-alignment: center; vertical-alignment: center;
+        }
+    }
+
+    Text {
+        x: 10px; y: 169px;
+        width: parent.width - (root.entry.entry-kind != 0 && !root.selection-mode ? 50px : 20px);
+        height: 42px;
+        text: root.entry.title;
+        color: #f4f6fb; font-size: 14px; font-weight: 700;
+        wrap: word-wrap; overflow: elide;
+    }
+    Text {
+        x: 10px; y: 214px; width: parent.width - 20px; height: 28px;
+        text: root.entry.entry-kind == 0 ? root.entry.subtitle : root.entry.badge;
+        color: #8f99b0; font-size: 11px; overflow: elide;
+    }
+    if root.entry.entry-kind != 0 && !root.selection-mode: Button {
+        x: parent.width - 46px; y: 168px; width: 38px; height: 38px;
+        text: root.entry.favorite ? "★" : "☆";
+        clicked => { root.favorite-toggled(root.entry.entry-id); }
+    }
+    if root.show-remove && root.entry.entry-kind != 0 && !root.selection-mode: Button {
+        x: parent.width - 46px; y: 210px; width: 38px; height: 34px;
+        icon: @image-url("../assets/icons/close.svg");
+        clicked => { root.reading-removed(root.entry.entry-id); }
+    }
+}
+
+component LibraryGridRow inherits HorizontalBox {
+    in property <LibraryRow> row-data;
+    in property <bool> show-remove;
+    in property <bool> selection-mode;
+    callback activated(LibraryEntry);
+    callback favorite-toggled(string);
+    callback reading-removed(string);
+    height: 260px;
+    spacing: 8px;
+    GridEntryCard {
+        entry: root.row-data.first;
+        show-remove: root.show-remove;
+        selection-mode: root.selection-mode;
+        activated => { root.activated(root.row-data.first); }
+        favorite-toggled(id) => { root.favorite-toggled(id); }
+        reading-removed(id) => { root.reading-removed(id); }
+    }
+    if root.row-data.has-second: GridEntryCard {
+        entry: root.row-data.second;
+        show-remove: root.show-remove;
+        selection-mode: root.selection-mode;
+        activated => { root.activated(root.row-data.second); }
+        favorite-toggled(id) => { root.favorite-toggled(id); }
+        reading-removed(id) => { root.reading-removed(id); }
+    }
+    if !root.row-data.has-second: Rectangle { background: transparent; }
+}
+
+export component AppWindow inherits Window {
+    title: "Reader";
+    icon: @image-url("../assets/app-icon/app-icon-256.png");
+    preferred-width: 1040px;
+    preferred-height: 720px;
+    min-width: 340px;
+    min-height: 520px;
+    background: #10131a;
+
+    if false: EntryCard { }
+
+    in property <string> app-version: "0.0.0";
+    in property <[LibraryRow]> library-items;
+    in property <[LibraryRow]> favorite-items;
+    in property <[LibraryRow]> reading-items;
+    in property <[LibraryRow]> folder-items;
+    in property <[LibraryRow]> search-items;
+    in property <[ReaderPage]> reader-pages;
+    in property <[ReaderBlock]> reader-blocks;
+    in property <[ReaderBlock]> reader-secondary-blocks;
+    in property <[ReaderToolItem]> reader-toc-items;
+    in property <[ReaderToolItem]> reader-search-items;
+    in property <[ReaderToolItem]> reader-bookmark-items;
+    in-out property <int> reader-index: 0;
+    in-out property <bool> reader-loading: false;
+    in-out property <string> reader-message: "";
+    in-out property <string> reader-title-id: "";
+    in-out property <bool> reader-fixed-page: false;
+    in-out property <bool> reader-is-comic: false;
+    in-out property <float> reader-zoom: 1.0;
+    in-out property <int> reader-view-mode: 2;
+    in-out property <bool> reader-fullscreen: false;
+    in-out property <bool> reader-controls-visible: true;
+    in-out property <int> reader-panel: 0;
+    in-out property <bool> reader-current-bookmarked: false;
+    in-out property <string> reader-search-query: "";
+    in-out property <float> reader-font-size: 18;
+    in-out property <int> reader-theme: 0;
+    in-out property <float> reader-margin: 18;
+    in-out property <float> reader-line-spacing: 1.2;
+    in property <bool> mobile-mode: false;
+    in-out property <string> status-message: "";
+    in-out property <bool> busy: false;
+    in-out property <bool> selection-mode: false;
+    in-out property <int> selection-count: 0;
+    in-out property <int> view-mode: 0;
+    in-out property <string> folder-title: "";
+    callback open-folder-requested(string);
+    callback folder-back-requested();
+    callback favorite-toggled(string);
+    callback reading-removed(string);
+    callback add-files-requested();
+    callback import-folder-requested();
+    callback create-folder-requested(string);
+    callback rename-folder-requested(string);
+    callback search-requested(string);
+    callback import-completed(string);
+    callback selection-mode-changed(bool);
+    callback selection-toggled(string);
+    callback delete-selected-requested();
+    callback open-title-requested(string);
+    callback reader-page-changed(string, string, float);
+    callback reader-page-selected(int);
+    callback reader-closed();
+    callback reader-fullscreen-toggled(bool);
+    callback reader-search-requested(string);
+    callback reader-bookmark-toggled(string, string, string);
+    callback reader-preferences-changed(float, int, float, float);
+    callback reader-page-number-requested(string);
+
+    private property <int> section: 0;
+    private property <int> previous-view-mode: 0;
+    private property <string> selected-title: "";
+    private property <bool> create-folder-mode: false;
+    private property <bool> rename-folder-mode: false;
+    private property <length> reader-content-x: 0px;
+    private property <length> reader-content-y: 0px;
+    private property <length> reader-text-content-y: 0px;
+    private property <string> reader-page-number: "";
+
+    function reader-page-step() -> int {
+        return reader-is-comic && reader-view-mode == 4 ? 2 : 1;
+    }
+
+    function open-entry(entry: LibraryEntry) {
+        if (selection-mode) {
+            selection-toggled(entry.entry-id);
+            return;
+        }
+        status-message = "";
+        if (entry.entry-kind == 0) {
+            open-folder-requested(entry.entry-id);
+        } else {
+            selected-title = entry.title;
+            previous-view-mode = view-mode;
+            view-mode = 2;
+            reader-title-id = entry.entry-id;
+            reader-zoom = 1.0;
+            reader-view-mode = entry.entry-kind == 2 ? 0 : 2;
+            reader-controls-visible = true;
+            reader-panel = 0;
+            reader-search-query = "";
+            reader-page-number = "";
+            reader-loading = true;
+            reader-message = "Loading content…";
+            open-title-requested(entry.entry-id);
+        }
+    }
+
+    function previous-reader-page() {
+        if (!reader-loading && reader-index > 0) {
+            reader-content-x = 0px;
+            reader-content-y = 0px;
+            reader-text-content-y = 0px;
+            reader-index = max(0, reader-index - reader-page-step());
+            reader-loading = true;
+            reader-message = "Loading page…";
+            root.reader-page-selected(reader-index);
+        }
+    }
+
+    function next-reader-page() {
+        if (!reader-loading && reader-index + reader-page-step() < reader-pages.length) {
+            reader-content-x = 0px;
+            reader-content-y = 0px;
+            reader-text-content-y = 0px;
+            reader-index += reader-page-step();
+            reader-loading = true;
+            reader-message = "Loading page…";
+            root.reader-page-selected(reader-index);
+        }
+    }
+
+    function select-reader-page(index: int) {
+        if (!reader-loading && index >= 0 && index < reader-pages.length && index != reader-index) {
+            reader-content-x = 0px;
+            reader-content-y = 0px;
+            reader-text-content-y = 0px;
+            reader-index = index;
+            reader-loading = true;
+            reader-message = "Loading page…";
+            reader-panel = 0;
+            root.reader-page-selected(index);
+        } else if (index == reader-index) {
+            reader-panel = 0;
+        }
+    }
+
+    Rectangle {
+        background: #10131a;
+
+        VerticalBox {
+            padding-left: view-mode == 2 && !reader-controls-visible ? 0px : (root.mobile-mode ? 8px : 18px);
+            padding-right: view-mode == 2 && !reader-controls-visible ? 0px : (root.mobile-mode ? 8px : 18px);
+            padding-top: view-mode == 2 && !reader-controls-visible ? 0px : (root.mobile-mode ? (view-mode == 0 ? 8px : 34px) : 18px);
+            padding-bottom: view-mode == 2 && !reader-controls-visible ? 0px : (root.mobile-mode ? 6px : 12px);
+            spacing: view-mode == 2 && !reader-controls-visible ? 0px : (root.mobile-mode ? 8px : 14px);
+
+            if !reader-fullscreen && (view-mode != 2 || reader-controls-visible): HorizontalBox {
+                height: root.mobile-mode ? 42px : 48px;
+                alignment: space-between;
+
+                Text {
+                    horizontal-stretch: 1;
+                    text: view-mode == 0 ? "" : (view-mode == 1 ? folder-title : selected-title);
+                    color: #f5f7fc;
+                    font-size: root.mobile-mode ? 19px : 28px;
+                    font-weight: 800;
+                    overflow: elide;
+                }
+
+                if view-mode != 0: Button {
+                    width: root.mobile-mode ? 44px : 100px;
+                    text: root.mobile-mode ? "" : "Back";
+                    icon: @image-url("../assets/icons/back.svg");
+                    clicked => {
+                        root.status-message = "";
+                        if (view-mode == 2) {
+                            root.reader-closed();
+                            view-mode = previous-view-mode;
+                        } else {
+                            if (selection-mode) {
+                                selection-mode = false;
+                                root.selection-mode-changed(false);
+                            }
+                            folder-back-requested();
+                        }
+                    }
+                }
+            }
+
+            if view-mode == 0: Rectangle {
+                height: root.mobile-mode ? 54px : 58px;
+                background: #171b25;
+                border-radius: 14px;
+
+                HorizontalBox {
+                    padding: 8px;
+                    spacing: 6px;
+
+                    NavButton { label: "Library"; icon: @image-url("../assets/icons/home.svg"); compact: root.mobile-mode; selected: section == 0; activated => { section = 0; } }
+                    NavButton { label: "Favorites"; icon: @image-url("../assets/icons/favorite.svg"); compact: root.mobile-mode; selected: section == 1; activated => { section = 1; } }
+                    NavButton { label: "Reading"; icon: @image-url("../assets/icons/file-add.svg"); compact: root.mobile-mode; selected: section == 2; activated => { section = 2; } }
+                    NavButton { label: "Search"; icon: @image-url("../assets/icons/search.svg"); compact: root.mobile-mode; selected: section == 3; activated => { section = 3; } }
+                }
+            }
+
+            if (view-mode == 0 && section == 0) || view-mode == 1: Rectangle {
+                height: root.mobile-mode ? 54px : 50px;
+                background: #171b25;
+                border-radius: 12px;
+
+                if !selection-mode && !root.mobile-mode: HorizontalBox {
+                    padding: 7px;
+                    spacing: 7px;
+
+                    Button {
+                        text: "Add files";
+                        enabled: !busy;
+                        clicked => { root.add-files-requested(); }
+                    }
+                    Button {
+                        text: "Import folder";
+                        enabled: !busy;
+                        clicked => { root.import-folder-requested(); }
+                    }
+                    Button {
+                        text: "New folder";
+                        enabled: !busy;
+                        clicked => {
+                            create-folder-mode = !create-folder-mode;
+                            rename-folder-mode = false;
+                        }
+                    }
+                    if view-mode == 1: Button {
+                        text: "Rename";
+                        enabled: !busy;
+                        clicked => {
+                            rename-folder-mode = !rename-folder-mode;
+                            create-folder-mode = false;
+                        }
+                    }
+                    if view-mode == 1: Button {
+                        text: "Delete";
+                        enabled: !busy;
+                        clicked => {
+                            selection-mode = true;
+                            root.selection-mode-changed(true);
+                            create-folder-mode = false;
+                            rename-folder-mode = false;
+                        }
+                    }
+                    if view-mode == 0: Button {
+                        text: "Delete";
+                        enabled: !busy;
+                        clicked => {
+                            selection-mode = true;
+                            root.selection-mode-changed(true);
+                            create-folder-mode = false;
+                        }
+                    }
+                }
+
+                if !selection-mode && root.mobile-mode: HorizontalBox {
+                    padding: 6px;
+                    spacing: 4px;
+
+                    Button {
+                        text: "";
+                        icon: @image-url("../assets/icons/file-add.svg");
+                        enabled: !busy;
+                        clicked => { root.add-files-requested(); }
+                    }
+                    Button {
+                        text: "";
+                        icon: @image-url("../assets/icons/folder-upload.svg");
+                        enabled: !busy;
+                        clicked => { root.import-folder-requested(); }
+                    }
+                    Button {
+                        text: "";
+                        icon: @image-url("../assets/icons/create-folder.svg");
+                        enabled: !busy;
+                        clicked => {
+                            create-folder-mode = !create-folder-mode;
+                            rename-folder-mode = false;
+                        }
+                    }
+                    if view-mode == 1: Button {
+                        text: "";
+                        icon: @image-url("../assets/icons/edit.svg");
+                        enabled: !busy;
+                        clicked => {
+                            rename-folder-mode = !rename-folder-mode;
+                            create-folder-mode = false;
+                        }
+                    }
+                    Button {
+                        text: "";
+                        icon: @image-url("../assets/icons/delete.svg");
+                        enabled: !busy;
+                        clicked => {
+                            selection-mode = true;
+                            root.selection-mode-changed(true);
+                            create-folder-mode = false;
+                            rename-folder-mode = false;
+                        }
+                    }
+                }
+
+                if selection-mode && !root.mobile-mode: HorizontalBox {
+                    padding: 7px;
+                    spacing: 8px;
+                    Text {
+                        text: selection-count == 0 ? "Select titles or folders" : selection-count + " selected";
+                        color: #bdc6dd;
+                        vertical-alignment: center;
+                    }
+                    Button {
+                        width: 150px;
+                        text: "Confirm deletion";
+                        enabled: selection-count > 0;
+                        clicked => { root.delete-selected-requested(); }
+                    }
+                    Button {
+                        width: 82px;
+                        text: "Cancel";
+                        clicked => {
+                            selection-mode = false;
+                            root.selection-mode-changed(false);
+                        }
+                    }
+                }
+
+                if selection-mode && root.mobile-mode: HorizontalBox {
+                    padding: 6px;
+                    spacing: 4px;
+                    Text {
+                        text: selection-count == 0 ? "Select titles or folders" : selection-count + " selected";
+                        color: #bdc6dd;
+                        vertical-alignment: center;
+                        overflow: elide;
+                    }
+                    Button {
+                        width: 46px;
+                        text: "";
+                        icon: @image-url("../assets/icons/check.svg");
+                        enabled: selection-count > 0;
+                        clicked => { root.delete-selected-requested(); }
+                    }
+                    Button {
+                        width: 46px;
+                        text: "";
+                        icon: @image-url("../assets/icons/close.svg");
+                        clicked => {
+                            selection-mode = false;
+                            root.selection-mode-changed(false);
+                        }
+                    }
+                }
+            }
+
+            if create-folder-mode || rename-folder-mode: Rectangle {
+                height: 50px;
+                background: #171b25;
+                border-radius: 12px;
+
+                HorizontalBox {
+                    padding: 7px;
+                    spacing: 8px;
+
+                    folder-name := LineEdit {
+                        placeholder-text: rename-folder-mode ? "New folder name" : "Folder name";
+                    }
+                    Button {
+                        width: root.mobile-mode ? 46px : 92px;
+                        text: root.mobile-mode ? "" : "Save";
+                        icon: @image-url("../assets/icons/check.svg");
+                        clicked => {
+                            if (rename-folder-mode) {
+                                root.rename-folder-requested(folder-name.text);
+                            } else {
+                                root.create-folder-requested(folder-name.text);
+                            }
+                            folder-name.text = "";
+                            create-folder-mode = false;
+                            rename-folder-mode = false;
+                        }
+                    }
+                    Button {
+                        width: root.mobile-mode ? 46px : 82px;
+                        text: root.mobile-mode ? "" : "Cancel";
+                        icon: @image-url("../assets/icons/close.svg");
+                        clicked => {
+                            create-folder-mode = false;
+                            rename-folder-mode = false;
+                        }
+                    }
+                }
+            }
+
+            if view-mode == 0 && section == 3: Rectangle {
+                height: 48px;
+                background: #171b25;
+                border-radius: 12px;
+
+                LineEdit {
+                    x: 10px;
+                    y: 6px;
+                    width: parent.width - 20px;
+                    height: 36px;
+                    placeholder-text: "Search title or author";
+                    edited(value) => { root.search-requested(value); }
+                }
+            }
+
+            if status-message != "" && (view-mode != 2 || reader-controls-visible): Rectangle {
+                height: 38px;
+                background: #182439;
+                border-radius: 10px;
+                Text {
+                    text: busy ? "Processing: " + status-message : status-message;
+                    color: #aebcf3;
+                    font-size: 13px;
+                    vertical-alignment: center;
+                    horizontal-alignment: center;
+                    wrap: word-wrap;
+                }
+            }
+
+            if view-mode == 0: ListView {
+                for row-data in section == 1 ? favorite-items : (section == 2 ? reading-items : (section == 3 ? search-items : library-items)): LibraryGridRow {
+                    row-data: row-data;
+                    show-remove: section == 2;
+                    selection-mode: root.selection-mode;
+                    activated(entry) => { root.open-entry(entry); }
+                    favorite-toggled(id) => { root.favorite-toggled(id); }
+                    reading-removed(id) => { root.reading-removed(id); }
+                }
+            }
+
+            if view-mode == 1: ListView {
+                for row-data in folder-items: LibraryGridRow {
+                    row-data: row-data;
+                    show-remove: false;
+                    selection-mode: root.selection-mode;
+                    activated(entry) => { root.open-entry(entry); }
+                    favorite-toggled(id) => { root.favorite-toggled(id); }
+                    reading-removed(id) => { root.reading-removed(id); }
+                }
+            }
+
+            if view-mode == 2: Rectangle {
+                background: reader-theme == 2 ? #f5f1e8 : (reader-theme == 1 ? #f3e6c8 : #171b25);
+                border-color: reader-controls-visible ? #303747 : transparent;
+                border-width: reader-controls-visible ? 1px : 0px;
+                border-radius: reader-controls-visible ? 16px : 0px;
+
+                if reader-pages.length == 0: Text {
+                    text: reader-message;
+                    color: #aebcf3;
+                    font-size: 16px;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                    wrap: word-wrap;
+                }
+
+                if reader-pages.length > 0: VerticalBox {
+                    padding-left: reader-controls-visible ? max(root.mobile-mode ? 12px : 36px, root.reader-margin * 1px) : 0px;
+                    padding-right: reader-controls-visible ? max(root.mobile-mode ? 12px : 36px, root.reader-margin * 1px) : 0px;
+                    padding-top: reader-controls-visible ? (root.mobile-mode ? 6px : 14px) : 0px;
+                    padding-bottom: reader-controls-visible ? (root.mobile-mode ? 6px : 12px) : 0px;
+                    spacing: reader-controls-visible ? (root.mobile-mode ? 6px : 10px) : 0px;
+
+                    if reader-controls-visible: Text {
+                        height: reader-pages[reader-index].heading == "" ? 0px : (root.mobile-mode ? 28px : 38px);
+                        text: reader-pages[reader-index].heading;
+                        color: reader-theme == 0 ? #f5f7fc : #3e3528;
+                        font-size: root.mobile-mode ? 17px : 22px;
+                        font-weight: 700;
+                        horizontal-alignment: center;
+                        wrap: word-wrap;
+                    }
+
+                    if reader-controls-visible: HorizontalBox {
+                        height: 42px;
+                        spacing: root.mobile-mode ? 4px : 8px;
+                        if !reader-is-comic: Button {
+                            text: root.mobile-mode ? "☰" : "Contents";
+                            clicked => { reader-panel = reader-panel == 1 ? 0 : 1; }
+                        }
+                        if !reader-is-comic: Button {
+                            text: root.mobile-mode ? "⌕" : "Search";
+                            clicked => { reader-panel = reader-panel == 2 ? 0 : 2; }
+                        }
+                        Button {
+                            text: reader-current-bookmarked ? "★" : "☆";
+                            clicked => {
+                                root.reader-bookmark-toggled(
+                                    reader-title-id,
+                                    reader-pages[reader-index].locator,
+                                    reader-pages[reader-index].heading == ""
+                                        ? "Page " + (reader-index + 1)
+                                        : reader-pages[reader-index].heading
+                                );
+                            }
+                        }
+                        Button {
+                            text: root.mobile-mode ? "Saved" : "Bookmarks";
+                            clicked => { reader-panel = reader-panel == 3 ? 0 : 3; }
+                        }
+                        if !reader-is-comic && !reader-fixed-page: Button {
+                            text: "Aa";
+                            clicked => { reader-panel = reader-panel == 4 ? 0 : 4; }
+                        }
+                    }
+
+                    if reader-controls-visible && reader-panel != 0: Rectangle {
+                        height: root.mobile-mode ? 210px : 260px;
+                        background: #151a24;
+                        border-color: #303747;
+                        border-width: 1px;
+                        border-radius: 10px;
+
+                        if reader-panel == 1: ListView {
+                            x: 8px; y: 8px; width: parent.width - 16px; height: parent.height - 16px;
+                            for item in reader-toc-items: ReaderToolRow {
+                                item: item;
+                                activated(index) => { root.select-reader-page(index); }
+                            }
+                        }
+
+                        if reader-panel == 2: VerticalBox {
+                            padding: 8px;
+                            spacing: 6px;
+                            LineEdit {
+                                height: 38px;
+                                placeholder-text: "Search this book or text file";
+                                text <=> root.reader-search-query;
+                                edited(value) => { root.reader-search-requested(value); }
+                            }
+                            ListView {
+                                for item in reader-search-items: ReaderToolRow {
+                                    item: item;
+                                    activated(index) => { root.select-reader-page(index); }
+                                }
+                            }
+                        }
+
+                        if reader-panel == 3: ListView {
+                            x: 8px; y: 8px; width: parent.width - 16px; height: parent.height - 16px;
+                            for item in reader-bookmark-items: ReaderToolRow {
+                                item: item;
+                                activated(index) => { root.select-reader-page(index); }
+                            }
+                        }
+
+                        if reader-panel == 4: VerticalBox {
+                            padding: 10px;
+                            spacing: 8px;
+                            HorizontalBox {
+                                height: 40px;
+                                Text { text: "Text size: " + round(root.reader-font-size); color: #d8deee; vertical-alignment: center; }
+                                Button { width: 46px; text: "−"; enabled: root.reader-font-size > 12; clicked => { root.reader-font-size = max(12, root.reader-font-size - 1); root.reader-preferences-changed(root.reader-font-size, root.reader-theme, root.reader-margin, root.reader-line-spacing); } }
+                                Button { width: 46px; text: "+"; enabled: root.reader-font-size < 32; clicked => { root.reader-font-size = min(32, root.reader-font-size + 1); root.reader-preferences-changed(root.reader-font-size, root.reader-theme, root.reader-margin, root.reader-line-spacing); } }
+                            }
+                            HorizontalBox {
+                                height: 40px;
+                                Text { text: "Theme: " + (root.reader-theme == 0 ? "dark" : (root.reader-theme == 1 ? "sepia" : "light")); color: #d8deee; vertical-alignment: center; }
+                                Button { width: 94px; text: "Change"; clicked => { root.reader-theme = root.reader-theme >= 2 ? 0 : root.reader-theme + 1; root.reader-preferences-changed(root.reader-font-size, root.reader-theme, root.reader-margin, root.reader-line-spacing); } }
+                            }
+                            HorizontalBox {
+                                height: 40px;
+                                Text { text: "Margins: " + round(root.reader-margin); color: #d8deee; vertical-alignment: center; }
+                                Button { width: 46px; text: "−"; enabled: root.reader-margin > 0; clicked => { root.reader-margin = max(0, root.reader-margin - 4); root.reader-preferences-changed(root.reader-font-size, root.reader-theme, root.reader-margin, root.reader-line-spacing); } }
+                                Button { width: 46px; text: "+"; enabled: root.reader-margin < 72; clicked => { root.reader-margin = min(72, root.reader-margin + 4); root.reader-preferences-changed(root.reader-font-size, root.reader-theme, root.reader-margin, root.reader-line-spacing); } }
+                            }
+                            HorizontalBox {
+                                height: 40px;
+                                Text { text: "Line spacing: " + round(root.reader-line-spacing * 10) / 10; color: #d8deee; vertical-alignment: center; }
+                                Button { width: 46px; text: "−"; enabled: root.reader-line-spacing > 1; clicked => { root.reader-line-spacing = max(1, root.reader-line-spacing - 0.1); root.reader-preferences-changed(root.reader-font-size, root.reader-theme, root.reader-margin, root.reader-line-spacing); } }
+                                Button { width: 46px; text: "+"; enabled: root.reader-line-spacing < 2; clicked => { root.reader-line-spacing = min(2, root.reader-line-spacing + 0.1); root.reader-preferences-changed(root.reader-font-size, root.reader-theme, root.reader-margin, root.reader-line-spacing); } }
+                            }
+                        }
+                    }
+
+                    content-area := Rectangle {
+                        private property <float> page-aspect: reader-fixed-page && reader-blocks.length > 0
+                            ? reader-blocks[0].pixel-width / max(reader-blocks[0].pixel-height, 1)
+                            : 1;
+                        private property <float> secondary-aspect: reader-secondary-blocks.length > 0
+                            ? reader-secondary-blocks[0].pixel-width / max(reader-secondary-blocks[0].pixel-height, 1)
+                            : 1;
+                        private property <length> double-page-width: max(1px, (self.width - 6px) / 2);
+                        private property <length> double-page-height: max(
+                            double-page-width / page-aspect,
+                            reader-secondary-blocks.length > 0
+                                ? double-page-width / secondary-aspect
+                                : double-page-width / page-aspect
+                        );
+                        private property <length> page-width: !reader-fixed-page || reader-blocks.length == 0
+                            ? self.width
+                            : root.reader-view-mode == 0
+                                ? min(self.width, self.height * page-aspect)
+                                : root.reader-view-mode == 1
+                                    ? self.width
+                                    : root.reader-view-mode == 3
+                                        ? self.height * page-aspect
+                                        : reader-blocks[0].pixel-width * 1px * root.reader-zoom;
+                        private property <length> page-height: page-width / page-aspect;
+                        private property <length> scroll-width: root.reader-view-mode == 4 ? self.width : page-width;
+                        private property <length> scroll-height: root.reader-view-mode == 4
+                            ? double-page-height
+                            : page-height;
+                        background: transparent;
+
+                        if reader-fixed-page && !reader-loading && reader-blocks.length > 0
+                            && (!reader-is-comic || reader-view-mode <= 3): Flickable {
+                            content-width: max(self.width, parent.page-width);
+                            content-height: max(self.height, parent.page-height);
+                            content-x <=> root.reader-content-x;
+                            content-y <=> root.reader-content-y;
+
+                            page-image := Image {
+                                x: (parent.content-width - self.width) / 2;
+                                y: (parent.content-height - self.height) / 2;
+                                width: content-area.page-width;
+                                height: content-area.page-height;
+                                source: reader-blocks[0].picture;
+                                image-fit: contain;
+                            }
+                        }
+
+                        if reader-is-comic && !reader-loading && reader-blocks.length > 0
+                            && reader-view-mode == 4: Flickable {
+                            content-width: self.width;
+                            content-height: max(self.height, content-area.double-page-height);
+                            content-x <=> root.reader-content-x;
+                            content-y <=> root.reader-content-y;
+
+                            Rectangle {
+                                x: 0px; y: 0px;
+                                width: content-area.double-page-width;
+                                height: content-area.double-page-height;
+                                clip: true;
+                                Image {
+                                    x: 0px; y: 0px;
+                                    width: parent.width;
+                                    height: parent.width / content-area.page-aspect;
+                                    source: reader-blocks[0].picture;
+                                    image-fit: contain;
+                                }
+                            }
+                            if reader-secondary-blocks.length > 0: Rectangle {
+                                x: content-area.double-page-width + 6px; y: 0px;
+                                width: content-area.double-page-width;
+                                height: content-area.double-page-height;
+                                clip: true;
+                                Image {
+                                    x: 0px; y: 0px;
+                                    width: parent.width;
+                                    height: parent.width / content-area.secondary-aspect;
+                                    source: reader-secondary-blocks[0].picture;
+                                    image-fit: contain;
+                                }
+                            }
+                        }
+
+
+                        if reader-fixed-page && reader-loading: Text {
+                            text: reader-message;
+                            color: #aebcf3;
+                            font-size: 16px;
+                            horizontal-alignment: center;
+                            vertical-alignment: center;
+                        }
+
+                        reflow-view := ListView {
+                            visible: !reader-fixed-page && !reader-loading;
+                            content-y <=> root.reader-text-content-y;
+                            for block in reader-blocks: ReaderContentBlock {
+                                block: block;
+                                reader-font-size: root.reader-font-size;
+                                reader-line-spacing: root.reader-line-spacing;
+                                reader-text-color: root.reader-theme == 0 ? #e4e7ef : #3e3528;
+                            }
+                        }
+
+                        if !reader-fixed-page && reader-loading: Text {
+                            text: reader-message;
+                            color: #aebcf3;
+                            font-size: 16px;
+                            horizontal-alignment: center;
+                            vertical-alignment: center;
+                        }
+
+                        if root.mobile-mode || !root.reader-controls-visible || root.reader-fixed-page: TouchArea {
+                            private property <length> start-content-x: 0px;
+                            private property <length> start-content-y: 0px;
+                            enabled: !root.reader-loading;
+                            moved => {
+                                if (root.reader-fixed-page) {
+                                    root.reader-content-x = max(
+                                        content-area.width - max(content-area.width, content-area.scroll-width),
+                                        min(0px, self.start-content-x + self.mouse-x - self.pressed-x)
+                                    );
+                                    root.reader-content-y = max(
+                                        content-area.height - max(content-area.height, content-area.scroll-height),
+                                        min(0px, self.start-content-y + self.mouse-y - self.pressed-y)
+                                    );
+                                } else if (root.mobile-mode || !root.reader-controls-visible) {
+                                    root.reader-text-content-y = max(
+                                        reflow-view.visible-height - max(reflow-view.visible-height, reflow-view.content-height),
+                                        min(0px, self.start-content-y + self.mouse-y - self.pressed-y)
+                                    );
+                                }
+                            }
+                            pointer-event(event) => {
+                                if (event.kind == PointerEventKind.down) {
+                                    self.start-content-x = root.reader-fixed-page ? root.reader-content-x : 0px;
+                                    self.start-content-y = root.reader-fixed-page ? root.reader-content-y : root.reader-text-content-y;
+                                } else if (event.kind == PointerEventKind.up) {
+                                    if (self.mouse-x < self.pressed-x + 14px && self.mouse-x > self.pressed-x - 14px
+                                        && self.mouse-y < self.pressed-y + 14px && self.mouse-y > self.pressed-y - 14px) {
+                                        root.reader-controls-visible = !root.reader-controls-visible;
+                                    } else if (self.mouse-y < self.pressed-y - 60px) {
+                                        if (root.reader-fixed-page
+                                            && self.start-content-y <= content-area.height - max(content-area.height, content-area.scroll-height)) {
+                                            root.next-reader-page();
+                                        } else if (!root.reader-fixed-page
+                                            && self.start-content-y <= reflow-view.visible-height - max(reflow-view.visible-height, reflow-view.content-height)) {
+                                            root.next-reader-page();
+                                        }
+                                    } else if (self.mouse-y > self.pressed-y + 60px) {
+                                        if ((root.reader-fixed-page && self.start-content-y >= 0px)
+                                            || (!root.reader-fixed-page && self.start-content-y >= 0px)) {
+                                            root.previous-reader-page();
+                                        }
+                                    }
+                                }
+                            }
+                            scroll-event(event) => {
+                                if (!root.mobile-mode && root.reader-fixed-page && event.delta-y != 0px) {
+                                    if (event.delta-y < 0px && root.reader-content-y <= content-area.height - max(content-area.height, content-area.scroll-height)) {
+                                        root.next-reader-page();
+                                    } else if (event.delta-y > 0px && root.reader-content-y >= 0px) {
+                                        root.previous-reader-page();
+                                    } else {
+                                        root.reader-content-y = max(
+                                            content-area.height - max(content-area.height, content-area.scroll-height),
+                                            min(0px, root.reader-content-y + event.delta-y)
+                                        );
+                                    }
+                                    return accept;
+                                }
+                                if (!root.mobile-mode && root.reader-fixed-page && event.delta-x != 0px) {
+                                    root.reader-content-x = max(
+                                        content-area.width - max(content-area.width, content-area.scroll-width),
+                                        min(0px, root.reader-content-x + event.delta-x)
+                                    );
+                                    return accept;
+                                }
+                                return reject;
+                            }
+                        }
+                    }
+
+                    if reader-is-comic && reader-controls-visible: HorizontalBox {
+                        height: 44px;
+                        spacing: root.mobile-mode ? 4px : 8px;
+                        NavButton {
+                            label: "Fit page";
+                            icon: @image-url("../assets/icons/fit-page.svg");
+                            compact: true;
+                            selected: root.reader-view-mode == 0;
+                            activated => { root.reader-view-mode = 0; root.reader-content-x = 0px; root.reader-content-y = 0px; }
+                        }
+                        NavButton {
+                            label: "Fit width";
+                            icon: @image-url("../assets/icons/fit-width.svg");
+                            compact: true;
+                            selected: root.reader-view-mode == 1;
+                            activated => { root.reader-view-mode = 1; root.reader-content-x = 0px; root.reader-content-y = 0px; }
+                        }
+                        NavButton {
+                            label: "Fit height";
+                            icon: @image-url("../assets/icons/fit-height.svg");
+                            compact: true;
+                            selected: root.reader-view-mode == 3;
+                            activated => { root.reader-view-mode = 3; root.reader-content-x = 0px; root.reader-content-y = 0px; }
+                        }
+                        NavButton {
+                            label: "Two pages";
+                            icon: @image-url("../assets/icons/two-pages.svg");
+                            compact: true;
+                            selected: root.reader-view-mode == 4;
+                            activated => { root.reader-view-mode = 4; root.reader-content-x = 0px; root.reader-content-y = 0px; }
+                        }
+                    }
+
+                    if reader-controls-visible: HorizontalBox {
+                        height: 44px;
+                        spacing: root.mobile-mode ? 4px : 10px;
+                        Button {
+                            text: root.mobile-mode ? "‹" : "Previous";
+                            enabled: !reader-loading && reader-index > 0;
+                            clicked => { root.previous-reader-page(); }
+                        }
+                        Text {
+                            text: reader-is-comic && reader-view-mode == 4
+                                && reader-index + 1 < reader-pages.length
+                                ? (reader-index + 1) + "–" + (reader-index + 2) + " / " + reader-pages.length
+                                : (reader-index + 1) + " / " + reader-pages.length;
+                            color: #aab2c4;
+                            horizontal-alignment: center;
+                            vertical-alignment: center;
+                        }
+                        Button {
+                            text: root.mobile-mode ? "›" : "Next";
+                            enabled: !reader-loading && reader-index + root.reader-page-step() < reader-pages.length;
+                            clicked => { root.next-reader-page(); }
+                        }
+                    }
+
+                    if reader-is-comic && reader-controls-visible: HorizontalBox {
+                        height: 42px;
+                        spacing: 6px;
+                        Text {
+                            text: "Go to:";
+                            color: #aab2c4;
+                            vertical-alignment: center;
+                        }
+                        LineEdit {
+                            width: 90px;
+                            placeholder-text: "1–" + reader-pages.length;
+                            text <=> root.reader-page-number;
+                            accepted => {
+                                root.reader-content-x = 0px;
+                                root.reader-content-y = 0px;
+                                root.reader-page-number-requested(root.reader-page-number);
+                            }
+                        }
+                        Button {
+                            width: root.mobile-mode ? 58px : 90px;
+                            text: root.mobile-mode ? "Go" : "Open";
+                            clicked => {
+                                root.reader-content-x = 0px;
+                                root.reader-content-y = 0px;
+                                root.reader-page-number-requested(root.reader-page-number);
+                            }
+                        }
+                    }
+                }
+            }
+
+            if view-mode == 0: Text {
+                height: 24px;
+                text: "Reader v" + app-version + " · local library";
+                color: #687187;
+                font-size: 12px;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+        }
+    }
+}
