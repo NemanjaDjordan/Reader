@@ -1,0 +1,57 @@
+GITHUB ABOUT DESCRIPTION
+========================
+
+Native open-source book and comic reader for Linux, Windows and Android. Built with Rust and Slint, with EPUB, TXT, CBZ and CBR support.
+
+
+SUGGESTED REPOSITORY NAME
+=========================
+
+reader
+
+
+SUGGESTED TOPICS
+================
+
+rust
+slint
+ebook-reader
+comic-reader
+epub
+cbz
+cbr
+android
+linux
+windows
+sqlite
+open-source
+
+
+LONGER PROJECT DESCRIPTION
+==========================
+
+Reader is a native, cross-platform application for organizing and reading
+books and comics on Linux, Windows and Android. It is written in Rust and uses
+Slint for its responsive user interface.
+
+The application supports EPUB, TXT, CBZ and CBR files, a local folder-based
+library, cover thumbnails, favorites, search, reading progress, bookmarks,
+single-page and two-page comic layouts, and mobile touch gestures. Android
+documents are accessed through the Storage Access Framework so the application
+does not permanently duplicate an imported collection in private storage.
+
+The source code is published under the permissive MIT License and contributions
+are welcome. Third-party components such as Slint, Qt, Material Icons and
+UnRAR retain their own license and attribution requirements, documented in
+THIRD_PARTY_NOTICES.md.
+
+
+SHORT DESCRIPTION IN BOSNIAN/SERBIAN
+=====================================
+
+Reader je nativni open-source čitač knjiga i stripova za Linux, Windows i
+Android, napisan u Rustu uz Slint interfejs. Podržava EPUB, TXT, CBZ i CBR,
+lokalnu biblioteku, foldere, naslovnice, favorite, pretragu, napredak čitanja,
+oznake i prikaz dvije stranice. Projekat koristi permisivnu MIT licencu, dok
+uključene zavisnosti zadržavaju vlastite licence i uslove.
+
