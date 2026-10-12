@@ -1,0 +1,6 @@
+These interface icons are adapted from Google Material Design Icons.
+
+Copyright Google LLC. Licensed under the Apache License, Version 2.0:
+https://www.apache.org/licenses/LICENSE-2.0
+
+Source: https://github.com/google/material-design-icons

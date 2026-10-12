@@ -1,0 +1,15 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="rs.citac.reader"
+    android:versionCode="1300"
+    android:versionName="0.13.0">
+    <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="35" />
+    <application android:label="Reader" android:icon="@drawable/app_icon" android:theme="@android:style/Theme.DeviceDefault.NoActionBar.Fullscreen" android:hasCode="true" android:extractNativeLibs="true">
+        <activity android:name="rs.citac.reader.CitacActivity" android:exported="true" android:configChanges="orientation|keyboardHidden|screenSize">
+            <meta-data android:name="android.app.lib_name" android:value="citac" />
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

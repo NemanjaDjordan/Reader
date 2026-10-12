@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Reader
+Comment=Read books and comics
+Exec=reader
+Icon=reader
+Terminal=false
+Categories=Office;Viewer;
+MimeType=application/epub+zip;application/vnd.comicbook+zip;application/vnd.comicbook-rar;text/plain;

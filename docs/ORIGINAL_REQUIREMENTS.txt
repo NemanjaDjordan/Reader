@@ -1,0 +1,115 @@
+Napravi cross-platform aplikaciju za čitanje knjiga i stripova pod nazivom „Čitač“, koristeći postojeći projekat kao referencu za funkcionalnosti i izgled.
+
+Tehnologije:
+- Rust kao glavni jezik
+- Slint za nativni GUI
+- Windows, Linux i Android
+- Bez Electron-a, Flutter-a i web GUI framework-a
+
+Prije izmjena pregledaj postojeći kod, strukturu projekta, dokumentaciju i testove. Nemoj prepravljati projekat ispočetka ako postojeća arhitektura već rješava dio zahtjeva. Ne izmišljaj API-je crate-ova; provjeri lokalnu dokumentaciju/source ili zvaničnu dokumentaciju kad nisi siguran.
+
+Prioriteti su stabilnost, mala potrošnja resursa, brz odziv i jednostavan kod. GUI nikad ne smije da se zamrzne tokom otvaranja knjige, dekodiranja slika, uvoza fajlova ili generisanja covera. Spore operacije izvršavaj u radnoj niti. Koristi lazy loading i ograničen cache, naročito za stripove.
+
+Podržani formati:
+- EPUB
+- CBR
+- CBZ
+- TXT
+- PDF nije podržan
+
+Aplikacija treba da ima:
+1. Biblioteku
+2. EPUB čitač
+3. Čitač stripova
+4. Pretragu
+
+Biblioteka:
+- Prikazuje foldere i naslove, cover, naziv, autora, napredak čitanja i status omiljenog.
+- Omogućava dodavanje fajla i uvoz foldera, uključujući podfoldere; uvoze se samo EPUB, CBR, CBZ i TXT fajlovi.
+- Izvorni fajlovi se nikada ne premještaju niti brišu.
+- Naslov otvara čitač klikom na karticu; nema posebnog dugmeta „Čitaj“.
+- Dugme sa zvjezdicom dodaje ili uklanja naslov iz omiljenih.
+- Navigacija ima „Biblioteka“, „Omiljene“, „Čitanje“ i „Podešavanja“.
+- „Omiljene“ prikazuje samo omiljene naslove.
+- „Čitanje“ prikazuje naslove sa sačuvanim napretkom. Naslov je moguće obrisati iz "Čitanje", ali on se ne briše iz folder ili druge lokacije na kojoj se nalazi. Ovo bi samo značilo da je osoba prestala čita ovaj naslov. Ako je otvori ponovo i pročita jednu barem stranu naslov se vraća u ovu sekciju.
+- Folderi podržavaju hijerarhiju, preimenovanje, brisanje iz aplikacije i više roditeljskih foldera za isti naslov.
+- Dugme za brisanje uključuje režim izbora, a konačno brisanje se potvrđuje posebnim dugmetom.
+- Brisanje foldera uklanja njegove veze sa naslovima; isti naslov ostaje dostupan ako je i u drugom folderu. Brisanje nikada ne uklanja originalni fajl.
+- Pretraživanje i standardni file picker; podrži i Android SAF picker.
+
+Pretraga:
+- Standardna pretraga koja izbacuje naslove ako ako se ukucana slova podudaraju sa dijelom ili čitavim nazivom naslova ili imenom ili prezimenom autora.
+
+Folder navigacija:
+- Otvaranje foldera prikazuje njegove podfoldere i naslove.
+- „Nazad“ iz korijenskog foldera vraća korijensku biblioteku i prikazuje sve glavne foldere.
+- „Nazad“ iz podfoldera vraća roditeljski folder.
+- Povratak u biblioteku nikada ne smije učiniti da folder samo nestane iz prikaza.
+- Kada se uđe u folder kartica u kojo se nalaze dugmad za Biblioteka, Omiljene, Čitanje i Pretraga treba da nestane i da se vrati tek kada se izađe iz foldera.
+
+Android prikaz:
+- Prilagođava se širini ekrana, bez horizontalnog skrolovanja.
+- Širine kontrola treba prilagođavati dostupnom prostoru, ne oslanjati se na krute desktop dimenzije.
+- Dugi nazivi knjiga i foldera prelamaju se u više redova; visina kartice prati sadržaj.
+- Akcije i kontrole mogu se rasporediti u više redova.
+- Skrolovanje liste je vertikalno.
+- Podrži touch interakcije i Android lifecycle.
+
+EPUB:
+- Čitaj spine poglavlja i prikaži Table of Contents.
+- Podrži tekst, slike i inline SVG.
+- Sačuvaj izvorni redoslijed tekstualnih i slikovnih blokova unutar poglavlja; EPUB može imati više slika u jednom poglavlju.
+- SVG rasterizuj u memoriji, a resurse učitavaj samo iz EPUB arhive.
+- Podrži oznake/bookmarks, pretragu unutar knjige i pamćenje pozicije.
+- Pozicija treba da bude dovoljno precizna za nastavak čitanja.
+- Podešavanja: veličina fonta, tema (tamna, sepia, svijetla), margine i prored.
+- Na telefonu ostavi oko 5% širine kao bočne margine, a na desktopu oko 10%, uz razuman minimum da tekst ne dodiruje ivice.
+- Ne pravi browser engine; implementiraj jednostavan renderer za uobičajen EPUB sadržaj.
+- Prepoznaj da složen CSS, floats i precizno prelamanje teksta oko slika mogu biti ograničeni.
+
+Stripovi:
+- CBR tretiraj kao RAR arhivu, CBZ kao ZIP arhivu.
+- Sortiraj stranice prirodnim redoslijedom.
+- Podrži JPG, PNG i WebP ako je podrška biblioteke stabilna.
+- Podrži zoom, pan, fit width, fit height, fit page, original size, fullscreen, single-page i double-page prikaz.
+- Podrži vertikalno listanje i preload narednih stranica.
+- Ne učitavaj cijeli strip u RAM; koristi strogo ograničen keš.
+- Ne dodaj manga/reverse-click funkcionalnost.
+
+TXT:
+- Podrži UTF-8 i uobičajena UTF-16 kodiranja, kao i razuman fallback za starije tekstualne fajlove.
+- TXT sadržaj treba da bude pretraživ i da pamti poziciju čitanja.
+
+Čitanje i interakcije:
+- U fullscreen režimu klik/tap na stranicu prikazuje ili skriva kontrole.
+- Na desktopu mišji scroll pomjera sadržaj gore/dolje. Tek nakon što se dođe do kraja stranice i scroll prestane, naredni scroll u istom smjeru prelazi na sljedeću stranicu/poglavlje.
+- Na telefonu swipe gore ili desno ide naprijed; swipe dole ili lijevo ide nazad. Android nema poseban desni klik.
+- Obezbijedi dugmad za prethodnu/sljedeću stranicu i unos broja stranice gdje ima smisla.
+
+Lokalni podaci:
+- Koristi SQLite ako odgovara postojećoj arhitekturi.
+- Čuvaj stabilan ID zasnovan na sadržaju fajla, putanju, metadata, omiljene, progress, oznake i vrijeme izmjene progressa.
+- Nemoj hashovati velike fajlove bez potrebe pri svakom startu; obrazloži strategiju identifikacije.
+- Koristi migracije baze tako da postojeći podaci budu sačuvani.
+
+Platforme i pakovanje:
+- Većina logike treba da bude zajednički Rust kod.
+- Platform-specific kod izdvoji za desktop integraciju, file associations i Android picker/permissions/lifecycle.
+- Omogući Linux paket, Windows executable/installer i Android APK; AAB može doći kasnije.
+
+Vizuelni stil:
+- Moderan, taman interfejs, kompaktan i pregledan.
+- Na desktopu grupiši sadržaj u centralnu kolonu kako elementi ne bi bili razvučeni preko velikih monitora.
+- Kartice i dugmad neka budu skladne veličine; folderi ne smiju zauzimati pretjerano puno prostora.
+- U folderu je polje za preimenovanje sakriveno dok korisnik ne izabere „Preimenuj“.
+- Poravnanje foldera treba da bude ka gore tako da gornja margina ne treba da bude prevelika nego samo tolika da malo odvoji elemente jedne od drugih, pogotovo naslove jedne od drugih. Ne treba da kada se uđe u folder da se skroluje do prvog naslova.
+
+Način rada:
+1. Prvo pregledaj postojeći projekat i uporedi ga sa zahtjevima.
+2. Ukratko prijavi arhitekturu, crate-ove, rizike i plan.
+3. Implementiraj funkcionalnost po koracima, ne sve odjednom.
+4. Poslije svakog značajnog koraka pokreni formatiranje, testove i build, pa popravi greške prije nastavka.
+5. Testiraj Linux build lokalno. Android i Windows treba da se kompajliraju kad toolchain bude dostupan.
+6. Dodaj ili ažuriraj testove za parsiranje EPUB blokova, navigaciju foldera, brisanje članstva, progress i strip cache.
+7. Napravi Linux paket i Android APK za ručno testiranje kad su promjene spremne.
+8. Izvještavaj kratko i precizno na srpskom jeziku. Ako ti nedostaje bitna informacija, pitaj prije nego što je pretpostaviš.
